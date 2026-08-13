@@ -4,7 +4,8 @@ import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
 
 import { EmptyState, PageHeader, Panel } from "@/components/admin-ui"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import {
   Table,
   TableBody,
@@ -151,11 +152,12 @@ export default function AppointmentsPage() {
                           </Button>
                         ) : null}
                         {canJoin ? (
-                          <Button size="sm" asChild>
-                            <Link href={`/appointments/call/${a.id}`}>
-                              Join call
-                            </Link>
-                          </Button>
+                          <Link
+                            href={`/appointments/call/${a.id}`}
+                            className={cn(buttonVariants({ size: "sm" }))}
+                          >
+                            Join call
+                          </Link>
                         ) : null}
                         {canAccept && isMine && !canJoin ? (
                           <Button

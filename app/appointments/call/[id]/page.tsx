@@ -287,10 +287,13 @@ export default function ClinicianCallPage() {
                 ) {
                   await new Promise((r) => setTimeout(r, 100))
                 }
+                // Re-read after await — ICE may have connected while we waited for stable.
+                const ice = peer.iceConnectionState as RTCIceConnectionState
                 if (
                   peer.signalingState !== "stable" ||
                   offeredRef.current ||
-                  peer.iceConnectionState === "connected"
+                  ice === "connected" ||
+                  ice === "completed"
                 ) {
                   return
                 }
@@ -584,14 +587,12 @@ export default function ClinicianCallPage() {
               {connected ? formatElapsed(elapsed) : status}
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-            className="border-white/20 bg-black/30 text-white hover:bg-black/50"
+          <Link
+            href="/appointments"
+            className="inline-flex h-8 items-center rounded-4xl border border-white/20 bg-black/30 px-3 text-sm font-medium text-white hover:bg-black/50"
           >
-            <Link href="/appointments">Back</Link>
-          </Button>
+            Back
+          </Link>
         </div>
 
         {/* Bottom controls */}
