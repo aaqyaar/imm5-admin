@@ -1,5 +1,7 @@
 export const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1"
+  process.env.NODE_ENV == "production"
+    ? "https://server.imm5.com/api/v1"
+    : (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api/v1")
 
 export const STAFF_ROLES = ["admin", "coach", "support"] as const
 export type StaffRole = (typeof STAFF_ROLES)[number]
