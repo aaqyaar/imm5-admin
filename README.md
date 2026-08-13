@@ -1,21 +1,33 @@
-# Next.js template
+# IMM5 Admin
 
-This is a Next.js template with shadcn/ui.
+Scandinavian clinician console for Integrative Metabolic Medicine.
 
-## Adding components
-
-To add components to your app, run the following command:
+## Setup
 
 ```bash
-npx shadcn@latest add button
+npm install
+cp .env.local.example .env.local   # or use existing .env.local
+npm run dev
 ```
 
-This will place the ui components in the `components` directory.
+Open [http://localhost:3000](http://localhost:3000).
 
-## Using components
+Requires the Go API at `NEXT_PUBLIC_API_URL` (default `http://localhost:8080/api/v1`).
 
-To use the components in your app, import them as follows:
+### Seed staff login
 
-```tsx
-import { Button } from "@/components/ui/button";
 ```
+admin@imm5.health / admin12345
+coach@imm5.health / coach12345
+```
+
+## Routes
+
+| Path | Description |
+| --- | --- |
+| `/login` | Staff sign-in |
+| `/` | Overview KPIs + growth |
+| `/patients` | Patient directory |
+| `/patients/[id]` | Profile, assessment, status/role |
+| `/challenges` | Walking challenge CRUD |
+| `/reports` | Growth + participation |
