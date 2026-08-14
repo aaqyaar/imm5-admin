@@ -8,20 +8,26 @@ import { toast } from "sonner"
 import { PageHeader, Panel, StatTile } from "@/components/admin-ui"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   api,
   type Assessment,
   type HealthMetric,
+  type Medication,
   type PatientDetail,
+  type Profile,
+  type ProfileInput,
   type ProgramInput,
   type User,
 } from "@/lib/api"
 import { useAuth } from "@/lib/auth"
 import {
   ACTIVITY_LABELS,
+  ACTIVITY_OPTIONS,
   ALCOHOL_LABELS,
+  ALCOHOL_OPTIONS,
   computeBmi,
   DIAGNOSIS_LABELS,
   formatDob,
@@ -32,8 +38,11 @@ import {
   METRIC_LABELS,
   NUTRITION_TYPE_LABELS,
   NUTRITION_TYPES,
+  SLEEP_HOUR_OPTIONS,
   SMOKING_LABELS,
+  SMOKING_OPTIONS,
   STRESS_LABELS,
+  STRESS_OPTIONS,
 } from "@/lib/patient-labels"
 
 const ROLES = ["user", "support", "coach", "admin"] as const
@@ -69,19 +78,40 @@ export default function PatientDetailPage() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [role, setRole] = useState("user")
-  const [nutritionType, setNutritionType] = useState("low_carb")
+  const [nutritionType, setNutritionType] = useState("intensive_metabolic")
   const [dailySteps, setDailySteps] = useState("8000")
   const [sleepGoal, setSleepGoal] = useState("7")
   const [resistanceDays, setResistanceDays] = useState("2")
   const [stressGoal, setStressGoal] = useState("")
   const [clinicianNotes, setClinicianNotes] = useState("")
+  const [activityLevel, setActivityLevel] = useState("")
+  const [sleepHours, setSleepHours] = useState("")
+  const [stressLevel, setStressLevel] = useState("")
+  const [smoking, setSmoking] = useState("")
+  const [alcohol, setAlcohol] = useState("")
+  const [occupation, setOccupation] = useState("")
+  const [meds, setMeds] = useState<Medication[]>([])
+  const [medName, setMedName] = useState("")
+  const [medDose, setMedDose] = useState("")
+  const [medSchedule, setMedSchedule] = useState("")
+  const [medNotes, setMedNotes] = useState("")
+  const [medBusy, setMedBusy] = useState(false)
 
   const load = useCallback(async () => {
     setError(null)
     try {
       const d = await api.get<PatientDetail>(`/admin/users/${id}`)
       setData(d)
+      setMeds(d.medications ?? [])
       setRole(d.user.role)
+      setActivityLevel(d.profile?.activityLevel ?? "")
+      setSleepHours(
+        d.profile?.sleepHours != null ? String(d.profile.sleepHours) : ""
+      )
+      setStressLevel(d.profile?.stressLevel ?? "")
+      setSmoking(d.profile?.smoking ?? "")
+      setAlcohol(d.profile?.alcohol ?? "")
+      setOccupation(d.profile?.occupation ?? "")
       if (d.program) {
         setNutritionType(d.program.nutritionType)
         setDailySteps(String(d.program.dailySteps))
@@ -132,6 +162,89 @@ export default function PatientDetailPage() {
       toast.error(e instanceof Error ? e.message : "Could not update role")
     } finally {
       setBusy(false)
+    }
+  }
+
+  async function saveLifestyle() {
+    setBusy(true)
+    try {
+      const body: ProfileInput = {
+        activityLevel: activityLevel || undefined,
+        stressLevel: stressLevel || undefined,
+        smoking: smoking || undefined,
+        alcohol: alcohol || undefined,
+        occupation: occupation.trim() || undefined,
+        sleepHours: sleepHours.trim() ? Number(sleepHours) : undefined,
+      }
+      const profile = await api.put<Profile>(`/admin/users/${id}/profile`, body)
+      setData((prev) => (prev ? { ...prev, profile } : prev))
+      toast.success("Lifestyle saved")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not save lifestyle")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function addMedication() {
+    if (!medName.trim()) {
+      toast.error("Medication name is required")
+      return
+    }
+    setMedBusy(true)
+    try {
+      const created = await api.post<Medication>(`/admin/users/${id}/medications`, {
+        name: medName.trim(),
+        dose: medDose.trim(),
+        schedule: medSchedule.trim(),
+        notes: medNotes.trim(),
+      })
+      setMeds((prev) => [created, ...prev])
+      setMedName("")
+      setMedDose("")
+      setMedSchedule("")
+      setMedNotes("")
+      toast.success("Medication added")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not add medication")
+    } finally {
+      setMedBusy(false)
+    }
+  }
+
+  async function setMedicationActive(med: Medication, active: boolean) {
+    setMedBusy(true)
+    try {
+      const updated = await api.patch<Medication>(
+        `/admin/users/${id}/medications/${med.id}`,
+        {
+          name: med.name,
+          dose: med.dose,
+          schedule: med.schedule,
+          notes: med.notes,
+          active,
+        }
+      )
+      setMeds((prev) => prev.map((m) => (m.id === updated.id ? updated : m)))
+      toast.success(active ? "Medication activated" : "Medication stopped")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update medication")
+    } finally {
+      setMedBusy(false)
+    }
+  }
+
+  async function removeMedication(med: Medication) {
+    if (!window.confirm(`Remove ${med.name} from this patient?`)) return
+    setMedBusy(true)
+    try {
+      await api.del(`/admin/users/${id}/medications/${med.id}`)
+      setMeds((prev) => prev.filter((m) => m.id !== med.id))
+      toast.success("Medication removed")
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not remove medication")
+    } finally {
+      setMedBusy(false)
     }
   }
 
@@ -323,44 +436,223 @@ export default function PatientDetailPage() {
             </dl>
           </Panel>
 
-          <Panel title="Lifestyle & habits">
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              <Field
-                label="Activity level"
-                value={labelFor(ACTIVITY_LABELS, profile?.activityLevel)}
-              />
-              <Field
-                label="Sleep"
-                value={
-                  profile?.sleepHours != null
-                    ? `${profile.sleepHours} h / night`
-                    : "—"
-                }
-              />
-              <Field
-                label="Stress"
-                value={labelFor(STRESS_LABELS, profile?.stressLevel)}
-              />
-              <Field
-                label="Smoking"
-                value={labelFor(SMOKING_LABELS, profile?.smoking)}
-              />
-              <Field
-                label="Alcohol"
-                value={labelFor(ALCOHOL_LABELS, profile?.alcohol)}
-              />
-              <Field
-                label="Occupation"
-                value={profile?.occupation?.trim() || "—"}
-              />
-            </dl>
+          <Panel
+            title="Medications"
+            description="Doctor records patient medications here — not managed in the patient app"
+          >
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="medName">Name</Label>
+                  <Input
+                    id="medName"
+                    value={medName}
+                    onChange={(e) => setMedName(e.target.value)}
+                    placeholder="Metformin"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="medDose">Dose</Label>
+                  <Input
+                    id="medDose"
+                    value={medDose}
+                    onChange={(e) => setMedDose(e.target.value)}
+                    placeholder="500 mg"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="medSchedule">Schedule</Label>
+                  <Input
+                    id="medSchedule"
+                    value={medSchedule}
+                    onChange={(e) => setMedSchedule(e.target.value)}
+                    placeholder="Morning & evening"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="medNotes">Notes</Label>
+                  <Input
+                    id="medNotes"
+                    value={medNotes}
+                    onChange={(e) => setMedNotes(e.target.value)}
+                    placeholder="Optional clinical notes"
+                  />
+                </div>
+              </div>
+              <Button onClick={addMedication} disabled={medBusy || !medName.trim()}>
+                {medBusy ? "Saving…" : "Add medication"}
+              </Button>
+
+              <div className="divide-y divide-border rounded-xl border border-border">
+                {meds.length === 0 ? (
+                  <p className="px-4 py-6 text-sm text-muted-foreground">
+                    No medications recorded yet.
+                  </p>
+                ) : (
+                  meds.map((med) => (
+                    <div
+                      key={med.id}
+                      className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-foreground">{med.name}</p>
+                          <Badge variant={med.active ? "default" : "secondary"}>
+                            {med.active ? "Active" : "Stopped"}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {[med.dose, med.schedule].filter(Boolean).join(" · ") ||
+                            "No dose / schedule"}
+                        </p>
+                        {med.notes ? (
+                          <p className="text-xs text-muted-foreground">{med.notes}</p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {med.active ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={medBusy}
+                            onClick={() => setMedicationActive(med, false)}
+                          >
+                            Stop
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={medBusy}
+                            onClick={() => setMedicationActive(med, true)}
+                          >
+                            Reactivate
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={medBusy}
+                          onClick={() => removeMedication(med)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Lifestyle & habits"
+            description="Doctor can set or update — patient can also edit in the app profile"
+          >
+            <div className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="activityLevel">Activity level</Label>
+                  <select
+                    id="activityLevel"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={activityLevel}
+                    onChange={(e) => setActivityLevel(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {ACTIVITY_OPTIONS.map((v) => (
+                      <option key={v} value={v}>
+                        {labelFor(ACTIVITY_LABELS, v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sleepHours">Sleep (h / night)</Label>
+                  <select
+                    id="sleepHours"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={sleepHours}
+                    onChange={(e) => setSleepHours(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {SLEEP_HOUR_OPTIONS.map((v) => (
+                      <option key={v} value={v}>
+                        {v} h
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="stressLevel">Stress</Label>
+                  <select
+                    id="stressLevel"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={stressLevel}
+                    onChange={(e) => setStressLevel(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {STRESS_OPTIONS.map((v) => (
+                      <option key={v} value={v}>
+                        {labelFor(STRESS_LABELS, v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="smoking">Smoking</Label>
+                  <select
+                    id="smoking"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={smoking}
+                    onChange={(e) => setSmoking(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {SMOKING_OPTIONS.map((v) => (
+                      <option key={v} value={v}>
+                        {labelFor(SMOKING_LABELS, v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="alcohol">Alcohol</Label>
+                  <select
+                    id="alcohol"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={alcohol}
+                    onChange={(e) => setAlcohol(e.target.value)}
+                  >
+                    <option value="">—</option>
+                    {ALCOHOL_OPTIONS.map((v) => (
+                      <option key={v} value={v}>
+                        {labelFor(ALCOHOL_LABELS, v)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="occupation">Occupation</Label>
+                  <input
+                    id="occupation"
+                    className="h-9 w-full rounded-xl border border-input bg-background px-3 text-sm"
+                    value={occupation}
+                    onChange={(e) => setOccupation(e.target.value)}
+                    placeholder="e.g. Office work"
+                  />
+                </div>
+              </div>
+              <Button onClick={saveLifestyle} disabled={busy}>
+                Save lifestyle
+              </Button>
+            </div>
           </Panel>
         </div>
 
         <div className="space-y-6">
           <Panel
             title="Nutrition plan"
-            description="Doctor preferences + AI-generated full meal plan"
+            description="Doctor assigns the protocol. Intensive metabolic reset is the default for metabolic patients."
           >
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -373,7 +665,7 @@ export default function PatientDetailPage() {
                 >
                   {data.program?.source === "assigned"
                     ? "Clinician assigned"
-                    : "Auto-generated / none"}
+                    : "Default / auto"}
                 </Badge>
                 {profile?.diagnosis ? (
                   <span className="text-xs text-muted-foreground">
@@ -396,6 +688,11 @@ export default function PatientDetailPage() {
                     </option>
                   ))}
                 </select>
+                <p className="text-xs text-muted-foreground">
+                  Intensive metabolic reset = keto + weekly fasting (Phase 1).
+                  Maintenance unlocks Phase 2 in the patient app (or when
+                  weight / BMI / HbA1c targets are met).
+                </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
@@ -725,21 +1022,8 @@ function AssessmentRow({
 }
 
 function suggestNutritionType(diagnosis?: string | null): string {
-  switch (diagnosis) {
-    case "t2dm":
-    case "prediabetes":
-      return "low_carb"
-    case "fatty_liver":
-      return "mediterranean"
-    case "pcos":
-      return "low_gi"
-    case "obesity":
-      return "calorie_deficit"
-    case "hypertension":
-      return "dash"
-    default:
-      return "balanced"
-  }
+  if (diagnosis === "step_up") return "balanced"
+  return "intensive_metabolic"
 }
 
 function Field({

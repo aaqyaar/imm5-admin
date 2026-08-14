@@ -8,9 +8,28 @@ export const DIAGNOSIS_LABELS: Record<string, string> = {
   high_cholesterol: "High cholesterol",
   sleep_apnea: "Sleep apnea",
   metabolic_syndrome: "Metabolic Syndrome",
+  step_up: "Step Up",
 }
 
+export const ACTIVITY_OPTIONS = [
+  "sedentary",
+  "light",
+  "moderate",
+  "active",
+  "very_active",
+] as const
+
+export const STRESS_OPTIONS = ["low", "moderate", "high", "very_high"] as const
+
+export const SMOKING_OPTIONS = ["never", "former", "occasional", "daily"] as const
+
+export const ALCOHOL_OPTIONS = ["none", "occasional", "moderate", "heavy"] as const
+
+export const SLEEP_HOUR_OPTIONS = ["5", "6", "7", "8", "9", "10"] as const
+
 export const NUTRITION_TYPE_LABELS: Record<string, string> = {
+  intensive_metabolic: "Intensive metabolic reset (default)",
+  maintenance: "Maintenance (unlocked)",
   low_carb: "Low carbohydrate",
   mediterranean: "Mediterranean",
   low_gi: "Low glycaemic",
@@ -20,6 +39,8 @@ export const NUTRITION_TYPE_LABELS: Record<string, string> = {
 }
 
 export const NUTRITION_TYPES = [
+  "intensive_metabolic",
+  "maintenance",
   "low_carb",
   "mediterranean",
   "low_gi",

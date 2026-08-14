@@ -40,6 +40,21 @@ export type Profile = {
   sleepHours: number | null
 }
 
+/** Staff update of patient lifestyle / body / diagnosis. */
+export type ProfileInput = {
+  heightCm?: number
+  weightKg?: number
+  waistCm?: number
+  targetWeightKg?: number
+  diagnosis?: string
+  activityLevel?: string
+  smoking?: string
+  alcohol?: string
+  occupation?: string
+  stressLevel?: string
+  sleepHours?: number
+}
+
 export type HealthMetric = {
   id: string
   metricType: string
@@ -179,6 +194,25 @@ export type ProgramInput = {
   clinicianNotes?: string
 }
 
+export type Medication = {
+  id: string
+  userId: string
+  name: string
+  dose: string
+  schedule: string
+  active: boolean
+  notes: string
+  createdAt: string
+}
+
+export type MedicationInput = {
+  name: string
+  dose?: string
+  schedule?: string
+  notes?: string
+  active?: boolean
+}
+
 export type PatientDetail = {
   user: User
   profile?: Profile | null
@@ -186,6 +220,7 @@ export type PatientDetail = {
   stepsSummary?: StepsSummary | null
   latestMetrics?: HealthMetric[]
   program?: Program | null
+  medications?: Medication[]
 }
 
 export type StepsOverview = {
